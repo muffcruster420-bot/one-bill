@@ -7,545 +7,107 @@
 <title>One Bill — Kingston Edition</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
-  :root {
-    --bg: #0d1117;
-    --panel: #161b22;
-    --card: #0d1117;
-    --border: #30363d;
-    --border-soft: #21262d;
-    --text: #e6edf3;
-    --muted: #8b949e;
-    --green: #2ea043;
-    --green-2: #238636;
-    --green-bright: #7ee28a;
-    --green-glow: rgba(46,160,67,0.25);
-    --red: #f85149;
-  }
-  * { box-sizing: border-box; }
-  html, body { height: 100%; }
-  body {
-    margin: 0;
-    background: radial-gradient(1200px 800px at 50% -200px, #132a1a 0%, var(--bg) 40%, var(--bg) 100%);
-    color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    overscroll-behavior-y: none;
-  }
-  .app {
-    max-width: 540px;
-    margin: 0 auto;
-    min-height: 100dvh;
-    position: relative;
-    padding-bottom: 190px;
-  }
-  header {
-    padding: 32px 20px 8px;
-    text-align: center;
-  }
-  .logo {
-    width: 44px; height: 44px;
-    margin: 0 auto 10px;
-    border-radius: 12px;
-    background: linear-gradient(145deg, #1f7a46, #2ea043);
-    box-shadow: 0 0 30px var(--green-glow), inset 0 1px 0 rgba(255,255,255,0.15);
-    display: grid; place-items: center;
-    font-size: 22px;
-  }
-  h1 {
-    margin: 0;
-    font-size: 40px;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    background: linear-gradient(180deg, #ffffff 0%, #d1ffe0 55%, var(--green-bright) 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    line-height: 1.05;
-  }
-  .subtitle {
-    margin-top: 6px;
-    color: var(--muted);
-    font-size: 15px;
-    font-weight: 500;
-  }
-  .explainer {
-    margin: 18px 20px 12px;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 14px 16px;
-    font-size: 14px;
-    line-height: 1.5;
-    color: #c9d1d9;
-    box-shadow: 0 1px 0 rgba(255,255,255,0.02) inset;
-  }
-  .kingston-note {
-    margin: 0 24px 14px;
-    display: flex; gap: 8px; align-items: center;
-    color: var(--green-bright);
-    font-size: 12.5px;
-    font-weight: 500;
-  }
-  .kingston-note svg { flex-shrink: 0; opacity: 0.9; }
-
-  .inputs {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 10px;
-    padding: 0 20px;
-  }
-  @media (min-width: 480px) {
-    .inputs { grid-template-columns: 1fr 1fr; }
-  }
-  .card {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 12px;
-    transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
-    animation: rise .4s ease both;
-  }
-  .card:nth-child(1){animation-delay:.02s} .card:nth-child(2){animation-delay:.04s}
-  .card:nth-child(3){animation-delay:.06s} .card:nth-child(4){animation-delay:.08s}
-  .card:nth-child(5){animation-delay:.10s} .card:nth-child(6){animation-delay:.12s}
-  .card:nth-child(7){animation-delay:.14s} .card:nth-child(8){animation-delay:.16s}
-  .card:nth-child(9){animation-delay:.18s} .card:nth-child(10){animation-delay:.20s}
-  @keyframes rise { from { opacity:0; transform: translateY(8px)} to {opacity:1; transform:none} }
-  .card:focus-within {
-    border-color: var(--green);
-    box-shadow: 0 0 0 3px var(--green-glow);
-    transform: translateY(-1px);
-  }
-  .card-top {
-    display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
-  }
-  .icon {
-    width: 34px; height: 34px;
-    display: grid; place-items: center;
-    background: var(--card);
-    border: 1px solid var(--border-soft);
-    border-radius: 10px;
-    font-size: 17px;
-  }
-  .label-name { font-weight: 600; font-size: 14px; }
-  .label-hint { font-size: 12px; color: var(--muted); margin-top: 1px; }
-  .input-wrap {
-    position: relative;
-    display: flex; align-items: center;
-    background: var(--card);
-    border: 1px solid var(--border-soft);
-    border-radius: 12px;
-    height: 46px;
-    padding-left: 28px;
-    transition: border-color .15s;
-  }
-  .input-wrap:focus-within { border-color: #2d333b; }
-  .input-wrap span {
-    position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
-    color: #7d8590; font-weight: 700; font-size: 16px;
-  }
-  .input-wrap input {
-    width: 100%; height: 100%;
-    background: transparent; border: 0; outline: 0;
-    color: var(--text); font-size: 18px; font-weight: 650;
-    font-variant-numeric: tabular-nums;
-    padding-right: 12px;
-  }
-  input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-  input[type=number] { -moz-appearance: textfield; }
-
-  .chart-card {
-    margin: 18px 20px 0;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 18px;
-    padding: 16px;
-  }
-  .chart-head {
-    display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 8px;
-  }
-  .chart-head h3 { margin: 0; font-size: 15px; font-weight: 650; }
-  .chart-head .tiny { font-size: 12px; color: var(--muted); }
-  .chart-wrap { height: 220px; position: relative; }
-  .empty {
-    position: absolute; inset: 0; display: grid; place-items: center;
-    color: #6e7681; font-size: 13px; text-align: center; padding: 0 20px;
-  }
-
-  .actions {
-    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;
-    padding: 14px 20px 0;
-  }
-  .btn {
-    height: 44px; border-radius: 12px; border: 1px solid var(--border);
-    background: #21262d; color: var(--text);
-    font-weight: 600; font-size: 14px;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    cursor: pointer; user-select: none;
-    transition: transform .12s ease, background .15s, border-color .15s, box-shadow .15s;
-  }
-  .btn:hover { transform: translateY(-1px); border-color: #3d444d; }
-  .btn:active { transform: translateY(0) scale(0.98); }
-  .btn.primary {
-    background: linear-gradient(180deg, var(--green), var(--green-2));
-    border-color: #2f9f4f; color: white;
-    box-shadow: 0 6px 18px rgba(46,160,67,0.25);
-  }
-  .btn.primary:hover { box-shadow: 0 8px 24px rgba(46,160,67,0.32); }
-  .btn.danger { background: transparent; }
-  .btn.danger:hover { border-color: #5a1f1b; color: #ff7b72; }
-
-  .results {
-    position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
-    background: linear-gradient(180deg, rgba(13,17,23,0) 0%, rgba(13,17,23,0.85) 18%, rgba(13,17,23,0.95) 100%);
-    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-    border-top: 1px solid var(--border);
-  }
-  .results-inner {
-    max-width: 540px; margin: 0 auto;
-    padding: 14px 20px calc(16px + env(safe-area-inset-bottom));
-  }
-  .total-row { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px; }
-  .total-label { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 700; }
-  .total-value {
-    font-size: 38px; font-weight: 800; letter-spacing: -0.02em; line-height: 1;
-    color: var(--green-bright); font-variant-numeric: tabular-nums;
-    text-shadow: 0 0 24px rgba(126,226,138,0.18);
-    transition: transform .18s ease;
-  }
-  .total-value.bump { transform: scale(1.03); }
-  .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .metric {
-    background: var(--panel); border: 1px solid var(--border-soft);
-    border-radius: 12px; padding: 9px 11px;
-  }
-  .metric-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
-  .metric-value { margin-top: 3px; font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; }
-
-  footer {
-    text-align: center; padding: 26px 20px 10px;
-    color: #6e7681; font-size: 12.5px;
-  }
-  footer a { color: #8b949e; text-decoration: none; }
-  footer a:hover { text-decoration: underline; }
-
-  #toast {
-    position: fixed; left: 50%; bottom: calc(160px + env(safe-area-inset-bottom));
-    transform: translateX(-50%) translateY(20px);
-    background: #1f242c; border: 1px solid var(--border);
-    color: var(--text); padding: 10px 14px; border-radius: 10px;
-    font-size: 13px; font-weight: 600; opacity: 0; pointer-events: none;
-    transition: all .25s ease; z-index: 100; box-shadow: 0 8px 30px rgba(0,0,0,.4);
-  }
-  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  :root{--bg:#0d1117;--panel:#161b22;--card:#0d1117;--border:#30363d;--border-soft:#21262d;--text:#e6edf3;--muted:#8b949e;--green:#2ea043;--green-2:#238636;--green-bright:#7ee28a;--green-glow:rgba(46,160,67,0.25);--red:#f85149;--red-glow:rgba(248,81,73,0.25)}
+  *{box-sizing:border-box}body{margin:0;background:radial-gradient(1200px 800px at 50% -200px,#132a1a 0%,var(--bg)40%,var(--bg)100%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif}
+  .app{max-width:540px;margin:0 auto;min-height:100dvh;position:relative;padding-bottom:260px}
+  header{padding:32px 20px 8px;text-align:center}
+  .logo{width:44px;height:44px;margin:0 auto 10px;border-radius:12px;background:linear-gradient(145deg,#1f7a46,#2ea043);box-shadow:0 0 30px var(--green-glow),inset 0 1px 0 rgba(255,255,255,.15);display:grid;place-items:center;font-size:22px}
+  h1{margin:0;font-size:40px;font-weight:800;letter-spacing:-.02em;background:linear-gradient(180deg,#fff 0%,#d1ffe0 55%,var(--green-bright)100%);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1.05}
+  .subtitle{margin-top:6px;color:var(--muted);font-size:15px;font-weight:500}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:12px;margin:0 20px 10px}
+  .income-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .input-wrap{position:relative;display:flex;align-items:center;background:var(--card);border:1px solid var(--border-soft);border-radius:12px;height:46px;padding-left:28px}
+  .input-wrap span{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#7d8590;font-weight:700;font-size:16px}
+  .input-wrap input{width:100%;height:100%;background:transparent;border:0;outline:0;color:var(--text);font-size:18px;font-weight:650;padding-right:12px;font-variant-numeric:tabular-nums}
+  label{font-size:12px;color:var(--muted);display:block;margin:0 0 4px 2px;text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+  .inputs{display:grid;grid-template-columns:1fr;gap:10px;padding:0 20px}
+  @media(min-width:480px){.inputs{grid-template-columns:1fr 1fr}}
+  .card-item{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:12px;transition:.18s}
+  .card-item:focus-within{border-color:var(--green);box-shadow:0 0 0 3px var(--green-glow)}
+  .card-top{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .icon{width:34px;height:34px;display:grid;place-items:center;background:var(--card);border:1px solid var(--border-soft);border-radius:10px;font-size:17px}
+  .label-name{font-weight:600;font-size:14px}.label-hint{font-size:12px;color:var(--muted);margin-top:1px}
+  .chart-card{margin:18px 20px 0;background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:16px}
+  .chart-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .chart-head h3{margin:0;font-size:15px;font-weight:650}.tiny{font-size:12px;color:var(--muted)}
+  .chart-wrap{height:220px;position:relative}
+  .actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:14px 20px 0}
+  .btn{height:44px;border-radius:12px;border:1px solid var(--border);background:#21262d;color:var(--text);font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
+  .btn.primary{background:linear-gradient(180deg,var(--green),var(--green-2));border-color:#2f9f4f;color:#fff;box-shadow:0 6px 18px rgba(46,160,67,.25)}
+  .results{position:fixed;bottom:0;left:0;right:0;z-index:40;background:linear-gradient(180deg,rgba(13,17,23,0)0%,rgba(13,17,23,.85)18%,rgba(13,17,23,.95)100%);backdrop-filter:blur(14px);border-top:1px solid var(--border)}
+  .results-inner{max-width:540px;margin:0 auto;padding:14px 20px calc(16px + env(safe-area-inset-bottom))}
+  .total-row{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:10px}
+  .total-label{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:700}
+  .total-value{font-size:38px;font-weight:800;letter-spacing:-.02em;line-height:1;color:var(--green-bright);font-variant-numeric:tabular-nums}
+  .surplus{font-size:22px;font-weight:800;padding:8px 12px;border-radius:10px;margin-left:auto}
+  .surplus.pos{background:rgba(46,160,67,.15);color:var(--green-bright);box-shadow:0 0 0 1px var(--green-glow) inset}
+  .surplus.neg{background:rgba(248,81,73,.15);color:#ff7b72;box-shadow:0 0 0 1px var(--red-glow) inset}
+  .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+  .metric{background:var(--panel);border:1px solid var(--border-soft);border-radius:12px;padding:9px 11px}
+  .metric-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+  .metric-value{margin-top:3px;font-weight:700;font-size:15px;font-variant-numeric:tabular-nums}
+  .spend{margin-top:8px;background:var(--panel);border:1px solid var(--border-soft);border-radius:12px;padding:10px;display:flex;gap:8px;align-items:center}
+  .spend input{flex:1;background:transparent;border:0;outline:0;color:var(--text);font-size:16px;font-weight:600}
+  .spend-result{font-size:13px;font-weight:600;white-space:nowrap}
+  .spend-result.yes{color:var(--green-bright)}.spend-result.no{color:#ff7b72}
+  footer{text-align:center;padding:26px 20px 10px;color:#6e7681;font-size:12.5px}
 </style>
 </head>
 <body>
 <div class="app">
-  <header>
-    <div class="logo">🧾</div>
-    <h1>One Bill</h1>
-    <div class="subtitle">Rent + Hydro + Heat = Actually Know</div>
-  </header>
-
-  <div class="explainer">
-    Hydro, heat, rent are all separate bills in Ontario. This puts them together so you know your real monthly burn.
-  </div>
-  <div class="kingston-note">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2C8 7 4 9.5 4 14c0 4.4 3.6 8 8 8s8-3.6 8-8c0-4.5-4-7-8-12Z" stroke="#7ee28a" stroke-width="1.6" fill="none"/></svg>
-    Kingston avg: Hydro ~$85, Heat ~$70 winter, Internet $65
+  <header><div class="logo">🧾</div><h1>One Bill</h1><div class="subtitle">Rent + Hydro + Heat = Actually Know</div></header>
+  
+  <div class="card">
+    <div class="income-grid">
+      <div><label>Monthly Income</label><div class="input-wrap"><span>$</span><input id="income" type="number" inputmode="decimal" placeholder="4200"></div></div>
+      <div><label>Savings Goal</label><div class="input-wrap"><span>$</span><input id="goal" type="number" inputmode="decimal" placeholder="500"></div></div>
+    </div>
   </div>
 
-  <main>
-    <div class="inputs" id="inputs"></div>
+  <div class="inputs" id="inputs"></div>
 
-    <div class="chart-card">
-      <div class="chart-head">
-        <h3>Where it goes</h3>
-        <span class="tiny">tap values to edit</span>
-      </div>
-      <div class="chart-wrap">
-        <canvas id="pie"></canvas>
-        <div class="empty" id="empty">Add amounts to see breakdown</div>
-      </div>
-    </div>
+  <div class="chart-card"><div class="chart-head"><h3>Where it goes</h3><span class="tiny">Kingston costs</span></div><div class="chart-wrap"><canvas id="pie"></canvas></div></div>
 
-    <div class="actions">
-      <button class="btn primary" id="saveBtn" aria-label="Save">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L20 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        Save
-      </button>
-      <button class="btn" id="shareBtn" aria-label="Share">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        Share
-      </button>
-      <button class="btn danger" id="resetBtn" aria-label="Reset">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M9 7V4h6v3m-9 4l1 9h8l1-9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        Reset
-      </button>
-    </div>
-  </main>
+  <div class="actions">
+    <button class="btn primary" id="saveBtn">Save</button>
+    <button class="btn" id="shareBtn">Share</button>
+    <button class="btn" id="resetBtn">Reset</button>
+  </div>
 
   <footer>Made in Kingston, ON — for Jesse</footer>
 
-  <div class="results">
-    <div class="results-inner">
-      <div class="total-row">
-        <div>
-          <div class="total-label">Monthly Total</div>
-          <div class="total-value" id="monthly">$0</div>
-        </div>
-      </div>
-      <div class="metrics">
-        <div class="metric">
-          <div class="metric-label">Yearly</div>
-          <div class="metric-value" id="yearly">$0</div>
-        </div>
-        <div class="metric">
-          <div class="metric-label">Daily</div>
-          <div class="metric-value" id="daily">$0.00</div>
-        </div>
-        <div class="metric">
-          <div class="metric-label">Per Hour</div>
-          <div class="metric-value" id="hourly">$0.00</div>
-        </div>
-      </div>
-    </div>
-  </div>
+  <div class="results"><div class="results-inner">
+    <div class="total-row"><div><div class="total-label">Monthly Expenses</div><div class="total-value" id="monthly">$0</div></div><div class="surplus pos" id="surplus">+$0</div></div>
+    <div class="metrics"><div class="metric"><div class="metric-label">Yearly</div><div class="metric-value" id="yearly">$0</div></div><div class="metric"><div class="metric-label">Daily</div><div class="metric-value" id="daily">$0.00</div></div><div class="metric"><div class="metric-label">Per Hour</div><div class="metric-value" id="hourly">$0.00</div></div></div>
+    <div class="spend"><span style="color:var(--muted);font-size:14px">Can I spend</span><span>$</span><input id="spendAmt" type="number" placeholder="80"><div class="spend-result" id="spendResult"></div></div>
+  </div></div>
 </div>
 
-<div id="toast"></div>
-
 <script>
-const ITEMS = [
-  { key: 'rent', name: 'Rent/Mortgage', icon: '🏠', placeholder: 1950, hint: 'Kingston 1-bed avg' },
-  { key: 'hydro', name: 'Hydro (Electricity)', icon: '⚡', placeholder: 85, hint: 'K-Hydro' },
-  { key: 'heat', name: 'Heating (Gas)', icon: '🔥', placeholder: 70, hint: 'Enbridge winter' },
-  { key: 'water', name: 'Water', icon: '💧', placeholder: 30, hint: 'Utilities Kingston' },
-  { key: 'internet', name: 'Internet', icon: '📶', placeholder: 65, hint: 'Cogeco/Bell' },
-  { key: 'phone', name: 'Phone', icon: '📱', placeholder: 55, hint: '' },
-  { key: 'insurance', name: 'Tenant Insurance', icon: '🛡️', placeholder: 25, hint: '' },
-  { key: 'groceries', name: 'Groceries', icon: '🛒', placeholder: 450, hint: '' },
-  { key: 'transit', name: 'Transit/Gas', icon: '🚌', placeholder: 120, hint: '' },
-  { key: 'other', name: 'Other', icon: '➕', placeholder: 0, hint: '' },
-];
+const ITEMS=[{k:'rent',n:'Rent/Mortgage',i:'🏠',p:1950,h:'Kingston 1-bed'},{k:'hydro',n:'Hydro',i:'⚡',p:85,h:'K-Hydro'},{k:'heat',n:'Heating',i:'🔥',p:70,h:'Enbridge'},{k:'water',n:'Water',i:'💧',p:30},{k:'internet',n:'Internet',i:'📶',p:65},{k:'phone',n:'Phone',i:'📱',p:55},{k:'insurance',n:'Insurance',i:'🛡️',p:25},{k:'groceries',n:'Groceries',i:'🛒',p:450},{k:'transit',n:'Transit/Gas',i:'🚌',p:120},{k:'other',n:'Other',i:'➕',p:0}];
+const COLORS=['#2ea043','#3fb950','#56d364','#238636','#1f7a46','#2c974b','#66c77a','#7ee28a','#9aeaa4','#8b949e'];
+const inputs=document.getElementById('inputs'),incomeEl=document.getElementById('income'),goalEl=document.getElementById('goal');
+const monthlyEl=document.getElementById('monthly'),yearlyEl=document.getElementById('yearly'),dailyEl=document.getElementById('daily'),hourlyEl=document.getElementById('hourly'),surplusEl=document.getElementById('surplus'),spendAmt=document.getElementById('spendAmt'),spendResult=document.getElementById('spendResult');
+let chart,prev=0;
+const f0=n=>new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',maximumFractionDigits:0}).format(n||0);
+const f2=n=>new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',minimumFractionDigits:2}).format(n||0);
 
-const COLORS = ['#2ea043','#3fb950','#56d364','#238636','#1f7a46','#2c974b','#66c77a','#7ee28a','#9aeaa4','#8b949e'];
-
-const inputsEl = document.getElementById('inputs');
-const monthlyEl = document.getElementById('monthly');
-const yearlyEl = document.getElementById('yearly');
-const dailyEl = document.getElementById('daily');
-const hourlyEl = document.getElementById('hourly');
-const emptyEl = document.getElementById('empty');
-const toastEl = document.getElementById('toast');
-
-let chart;
-let prevTotal = 0;
-
-function fmt0(n){ return new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',maximumFractionDigits:0}).format(n||0); }
-function fmt2(n){ return new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',minimumFractionDigits:2,maximumFractionDigits:2}).format(n||0); }
-
-function createInputs() {
-  inputsEl.innerHTML = '';
-  ITEMS.forEach(item => {
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.innerHTML = `
-      <div class="card-top">
-        <div class="icon">${item.icon}</div>
-        <div>
-          <div class="label-name">${item.name}</div>
-          <div class="label-hint">${item.hint || ''}</div>
-        </div>
-      </div>
-      <div class="input-wrap">
-        <span>$</span>
-        <input type="number" inputmode="decimal" step="0.01" pattern="[0-9]*" placeholder="${item.placeholder}" data-key="${item.key}" aria-label="${item.name}">
-      </div>
-    `;
-    inputsEl.appendChild(card);
-  });
-  inputsEl.querySelectorAll('input').forEach(inp => {
-    inp.addEventListener('input', onChange);
-    inp.addEventListener('focus', e => e.target.select());
-  });
+function build(){inputs.innerHTML='';ITEMS.forEach(it=>{const d=document.createElement('div');d.className='card-item';d.innerHTML=`<div class="card-top"><div class="icon">${it.i}</div><div><div class="label-name">${it.n}</div><div class="label-hint">${it.h||''}</div></div></div><div class="input-wrap"><span>$</span><input type="number" inputmode="decimal" data-k="${it.k}" placeholder="${it.p}"></div>`;inputs.appendChild(d)});document.querySelectorAll('input').forEach(i=>i.addEventListener('input',calc))}
+function vals(){const o={};document.querySelectorAll('[data-k]').forEach(i=>o[i.dataset.k]=parseFloat(i.value)||0);return o}
+function calc(){const v=vals();let t=0;const data=[];ITEMS.forEach((it,i)=>{const val=v[it.k]||0;t+=val;if(val>0)data.push({l:it.n,v:val,c:COLORS[i]})});const inc=parseFloat(incomeEl.value)||0,goal=parseFloat(goalEl.value)||0;const net=inc-t;const left=net-goal;
+monthlyEl.textContent=f0(t);yearlyEl.textContent=f0(t*12);dailyEl.textContent=f2(t*12/365);hourlyEl.textContent=f2(t*12/365/24);
+surplusEl.textContent=(net>=0?'+':'')+f0(net);surplusEl.className='surplus '+(net>=0?'pos':'neg');
+if(chart){chart.data.labels=data.map(d=>d.l);chart.data.datasets[0].data=data.map(d=>d.v);chart.data.datasets[0].backgroundColor=data.map(d=>d.c);chart.update()}
+checkSpend();
+localStorage.setItem('ob',JSON.stringify({v,income:inc,goal}))
 }
-
-function getValues() {
-  const vals = {};
-  document.querySelectorAll('#inputs input').forEach(i => {
-    vals[i.dataset.key] = parseFloat(i.value) || 0;
-  });
-  return vals;
-}
-
-function setValues(vals) {
-  document.querySelectorAll('#inputs input').forEach(i => {
-    i.value = vals[i.dataset.key] ? String(vals[i.dataset.key]) : '';
-  });
-}
-
-function calculate() {
-  const vals = getValues();
-  let total = 0;
-  const breakdown = [];
-  ITEMS.forEach((it, idx) => {
-    const v = vals[it.key] || 0;
-    total += v;
-    if (v > 0) breakdown.push({ label: it.name, value: v, color: COLORS[idx] });
-  });
-
-  const yearly = total * 12;
-  const daily = yearly / 365;
-  const hourly = daily / 24;
-
-  // animate monthly
-  animateNumber(prevTotal, total, v => monthlyEl.textContent = fmt0(v));
-  prevTotal = total;
-  monthlyEl.classList.add('bump');
-  setTimeout(()=>monthlyEl.classList.remove('bump'),180);
-
-  yearlyEl.textContent = fmt0(yearly);
-  dailyEl.textContent = fmt2(daily);
-  hourlyEl.textContent = fmt2(hourly);
-
-  updateChart(breakdown, total);
-  emptyEl.style.display = total > 0 ? 'none' : 'grid';
-}
-
-function animateNumber(from, to, cb) {
-  const start = performance.now();
-  const dur = 280;
-  function tick(t){
-    const p = Math.min(1, (t - start)/dur);
-    const eased = 1 - Math.pow(1-p, 3);
-    cb(from + (to - from) * eased);
-    if(p < 1) requestAnimationFrame(tick);
-  }
-  requestAnimationFrame(tick);
-}
-
-function updateChart(data, total) {
-  if(!chart) return;
-  chart.data.labels = data.map(d => d.label);
-  chart.data.datasets[0].data = data.map(d => d.value);
-  chart.data.datasets[0].backgroundColor = data.map(d => d.color);
-  chart.update('none');
-}
-
-function initChart() {
-  const ctx = document.getElementById('pie');
-  chart = new Chart(ctx, {
-    type: 'doughnut',
-    data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderWidth: 0, hoverOffset: 6 }] },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: '70%',
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#11161d',
-          titleColor: '#e6edf3',
-          bodyColor: '#c9d1d9',
-          borderColor: '#30363d',
-          borderWidth: 1,
-          padding: 10,
-          displayColors: true,
-          callbacks: {
-            label: (ctx) => ` ${ctx.label}: ${fmt0(ctx.parsed)}`
-          }
-        }
-      }
-    }
-  });
-}
-
-function onChange() {
-  calculate();
-}
-
-function saveAll() {
-  const vals = getValues();
-  localStorage.setItem('onebill-kingston-v2', JSON.stringify(vals));
-  showToast('Saved to this device ✓');
-}
-function loadAll() {
-  const raw = localStorage.getItem('onebill-kingston-v2');
-  if(raw){
-    try { setValues(JSON.parse(raw)); return true; } catch {}
-  }
-  // first run: prefill with Kingston typicals as placeholders (actual values)
-  const defaults = {};
-  ITEMS.forEach(i => defaults[i.key] = i.placeholder);
-  setValues(defaults);
-  return false;
-}
-function resetAll() {
-  if(!confirm('Clear all amounts?')) return;
-  document.querySelectorAll('#inputs input').forEach(i => i.value = '');
-  localStorage.removeItem('onebill-kingston-v2');
-  calculate();
-  showToast('Reset');
-}
-
-async function shareAll() {
-  const vals = getValues();
-  const total = Object.values(vals).reduce((a,b)=>a+b,0);
-  const yearly = total*12, daily = yearly/365, hourly = daily/24;
-  const lines = [
-    'One Bill — Kingston Edition',
-    `Monthly: ${fmt0(total)}`,
-    `Yearly: ${fmt0(yearly)}`,
-    `Daily: ${fmt2(daily)} (${fmt2(hourly)}/hr)`,
-    '',
-    'Breakdown:'
-  ];
-  ITEMS.forEach(it => {
-    const v = vals[it.key];
-    if(v>0) lines.push(`• ${it.name}: ${fmt0(v)}`);
-  });
-  lines.push('', 'Hydro, heat, rent — combined.');
-  const text = lines.join('\n');
-
-  if(navigator.share) {
-    try { await navigator.share({ title: 'One Bill Kingston', text }); return; } catch {}
-  }
-  try {
-    await navigator.clipboard.writeText(text);
-    showToast('Summary copied');
-  } catch {
-    showToast('Copy failed');
-  }
-}
-
-let toastTimer;
-function showToast(msg) {
-  toastEl.textContent = msg;
-  toastEl.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=>toastEl.classList.remove('show'), 1800);
-}
-
-document.getElementById('saveBtn').addEventListener('click', saveAll);
-document.getElementById('shareBtn').addEventListener('click', shareAll);
-document.getElementById('resetBtn').addEventListener('click', resetAll);
-
-// Init
-createInputs();
-initChart();
-loadAll();
-calculate();
-
-// Autosave debounce
-let saveDebounce;
-document.getElementById('inputs').addEventListener('input', () => {
-  clearTimeout(saveDebounce);
-  saveDebounce = setTimeout(saveAll, 800);
-});
+function checkSpend(){const amt=parseFloat(spendAmt.value)||0;const inc=parseFloat(incomeEl.value)||0;const v=vals();const t=Object.values(v).reduce((a,b)=>a+b,0);const left=inc-t-amt;if(!amt){spendResult.textContent='';return}spendResult.textContent=left>=0?`YES — ${f0(left)} left`:`NO — ${f0(Math.abs(left))} short`;spendResult.className='spend-result '+(left>=0?'yes':'no')}
+function init(){build();const ctx=document.getElementById('pie');chart=new Chart(ctx,{type:'doughnut',data:{labels:[],datasets:[{data:[],backgroundColor:[],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'70%',plugins:{legend:{display:false}}}});const s=localStorage.getItem('ob');if(s){try{const o=JSON.parse(s);Object.entries(o.v||{}).forEach(([k,val])=>{const i=document.querySelector(`[data-k="${k}"]`);if(i)i.value=val});incomeEl.value=o.income||'';goalEl.value=o.goal||''}catch{}}calc()}
+document.getElementById('saveBtn').onclick=()=>{calc();alert('Saved')};
+document.getElementById('resetBtn').onclick=()=>{if(confirm('Clear?')){localStorage.removeItem('ob');document.querySelectorAll('input').forEach(i=>i.value='');calc()}};
+document.getElementById('shareBtn').onclick=async()=>{const inc=parseFloat(incomeEl.value)||0;const v=vals();const t=Object.values(v).reduce((a,b)=>a+b,0);const net=inc-t;const txt=`One Bill Kingston\nIncome: ${f0(inc)}\nExpenses: ${f0(t)}\n${net>=0?'Surplus':'Deficit'}: ${f0(net)}\n\nHydro, heat, rent — combined.`;if(navigator.share){try{await navigator.share({text:txt})}catch{}}else{navigator.clipboard.writeText(txt)}};
+incomeEl.addEventListener('input',calc);goalEl.addEventListener('input',calc);spendAmt.addEventListener('input',checkSpend);
+init();
 </script>
-<script>(function(){document.addEventListener("click",function(e){var a=e.target.closest("[data-product-id]");if(!a)return;e.preventDefault();var pid=a.getAttribute("data-product-id");if(pid)parent.postMessage({type:"ecto-artifact-link-click",productId:pid},"*")})})();</script>
 </body>
 </html>
