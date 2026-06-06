@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Playables SDK -->
+<script>// Playables SDK v1.0.0
+// Game lifecycle bridge: rAF-based game-ready detection + event communication
+(function() {
+  'use strict';
+
+  // Idempotency: skip if already initialized (e.g., server-side injection
+  // followed by client-side inject-javascript via the Bloks webview component).
+  if (window.playablesSDK) return;
+
+  var HANDLER_NAME = 'playablesGameEventHandler';
+  var ANDROID_BRIDGE_NAME = '_MetaPlayablesBridge';
+  var RAF_FRAME_THRESHOLD = 3;
+
+  var gameReadySent = false;
+  var firstInteractionSent = false;
+  var errorSent = false;
+  var frameCount = 0;
+  var originalRAF = window.requestAnimationFrame;
+
+  // --- Transport Layer ---
+
+  function hasIOSBridge() {
+    return !!(window.webkit &&
+              window.webkit.messageHandlers &&
+              window.webkit.messageHandlers[HANDLER_NAME]);
+  }
+
+  function hasAndroidBridge() {
+    return !!(window[ANDROID_BRIDGE_NAME] &&
+              typeof window[ANDROID_BRIDGE_NAME].postEvent === 'function');
+  }
+
+  function isInIframe() {
+    return !!(window.parent && window.parent !== window);
+  }
+
+  function sendEvent(eventName, payload) {
+    var message = {
+      type: eventName,
+      payload: payload || {},
+      timestamp: Date.now()
+    };
+
+    if (hasIOSBridge()) {
+      try {
+        window.webkit.messageHandlers[HANDLER_NAME].postMessage(message);
+      } catch (e) { /* ignore */ }
+      return;
+    }
+
+    if (hasAndroidBridge()) {
+    try {
+      var p = payload || {};
+      p.__secureToken = window.__fbAndroidBridgeAuthToken || '';
+      p.timestamp = message.timestamp;
+      window[ANDROID_BRIDGE_NAME].postEvent(
+        eventName,
+        JSON.stringify(p)
+      );
+    } catch (e) { /* ignore */ }
+    return;
+  }
+
+    if (isInIframe()) {
+      try {
+        window.parent.postMessage(message, '*');
+      } catch (e) { /* ignore */ }
+      return;
+    }
+  }
+
+  // --- rAF Game-Ready Detection ---
+
+  function onFrame() {
+    if (gameReadySent) return;
+
+    frameCount++;
+    if (frameCount >= RAF_FRAME_THRESHOLD) {
+      gameReadySent = true;
+      sendEvent('game_ready', {
+        frame_count: frameCount,
+        detected_at: Date.now()
+      });
+      return;
+    }
+
+    originalRAF.call(window, onFrame);
+  }
+
+  if (originalRAF) {
+    window.requestAnimationFrame = function(callback) {
+      if (!gameReadySent) {
+        return originalRAF.call(window, function(timestamp) {
+          frameCount++;
+          if (frameCount >= RAF_FRAME_THRESHOLD && !gameReadySent) {
+            gameReadySent = true;
+            sendEvent('game_ready', {
+              frame_count: frameCount,
+              detected_at: Date.now()
+            });
+          }
+          callback(timestamp);
+        });
+      }
+      return originalRAF.call(window, callback);
+    };
+  }
+
+  // --- First User Interaction Detection ---
+
+  function setupFirstInteractionDetection() {
+    var events = ['touchstart', 'mousedown', 'keydown'];
+
+    function onFirstInteraction() {
+      if (firstInteractionSent) return;
+      firstInteractionSent = true;
+      sendEvent('user_interaction_start', null);
+
+      for (var i = 0; i < events.length; i++) {
+        document.removeEventListener(events[i], onFirstInteraction, true);
+      }
+    }
+
+    for (var i = 0; i < events.length; i++) {
+      document.addEventListener(events[i], onFirstInteraction, true);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupFirstInteractionDetection);
+  } else {
+    setupFirstInteractionDetection();
+  }
+
+  // --- Auto Error Capture ---
+
+  window.addEventListener('error', function(event) {
+    if (errorSent) return;
+    errorSent = true;
+    sendEvent('error', {
+      message: event.message || 'Unknown error',
+      source: event.filename || '',
+      lineno: event.lineno || 0,
+      colno: event.colno || 0,
+      auto_captured: true
+    });
+  });
+
+  window.addEventListener('unhandledrejection', function(event) {
+    if (errorSent) return;
+    errorSent = true;
+    var reason = event.reason;
+    sendEvent('error', {
+      message: (reason instanceof Error) ? reason.message : String(reason),
+      type: 'unhandled_promise_rejection',
+      auto_captured: true
+    });
+  });
+
+  // --- Public API ---
+
+  window.playablesSDK = {
+    complete: function(score) {
+      sendEvent('game_ended', {
+        score: score,
+        completed: true
+      });
+    },
+
+    error: function(message) {
+      if (errorSent) return;
+      errorSent = true;
+      sendEvent('error', {
+        message: message || 'Unknown error',
+        auto_captured: false
+      });
+    },
+
+    sendEvent: function(eventName, payload) {
+      if (!eventName || typeof eventName !== 'string') return;
+      sendEvent(eventName, payload);
+    }
+  };
+
+  // Kick off rAF detection in case no game code calls rAF immediately
+  if (originalRAF) {
+    originalRAF.call(window, onFrame);
+  }
+})();</script>
+<!-- PLAYABLE_TOUCH_PATCH_V1 --><script>
+(function() {
+  if (window.__playableTouchPatchInstalled) return;
+  window.__playableTouchPatchInstalled = true;
+  var origAdd = EventTarget.prototype.addEventListener;
+  var blockedTypes = { touchstart: 1, touchmove: 1, wheel: 1 };
+  EventTarget.prototype.addEventListener = function(type, listener, options) {
+    if (blockedTypes[type]) {
+      if (options === undefined || options === null) {
+        options = { passive: true };
+      } else if (typeof options === 'boolean') {
+        options = { capture: options, passive: true };
+      } else {
+        options = Object.assign({}, options, { passive: true });
+      }
+    }
+    return origAdd.call(this, type, listener, options);
+  };
+})();
+</script><script>window.Intl=window.Intl||{};Intl.t=function(s){return(Intl._locale&&Intl._locale[s])||s;};</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>One Bill — Fair Split</title>
+<style>
+:root{--bg:#0f1115;--card:#171a21;--accent:#7dd3fc;--text:#e5e7eb;--muted:#9ca3af}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,sans-serif;background:var(--bg);color:var(--text);padding:16px}
+h1{font-size:1.4rem;margin:0 0 12px}.card{background:var(--card);border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:0 4px 16px rgba(0,0,0,.3)}
+label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}input,select,button{width:100%;padding:10px;border-radius:10px;border:1px solid #2a2f3a;background:#0f1218;color:var(--text);font-size:1rem}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.people{display:flex;flex-direction:column;gap:8px}
+.person{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:6px;align-items:center}
+.person input[type=text]{grid-column:1}.pill{display:flex;align-items:center;gap:4px;font-size:.75rem;color:var(--muted)}
+button.primary{background:var(--accent);color:#001018;border:none;font-weight:700;margin-top:8px}
+.result{font-size:1.1rem;font-weight:600}.muted{color:var(--muted);font-size:.85rem}
+</style>
+</head>
+<body>
+<h1>One Bill</h1>
+<div class="card">
+  <label>Bill total</label>
+  <input id="total" type="number" step="0.01" placeholder="100.00">
+  <div class="row" style="margin-top:8px">
+    <div><label>Tax %</label><input id="tax" type="number" value="0"></div>
+    <div><label>Tip %</label><input id="tip" type="number" value="18"></div>
+  </div>
+</div>
+
+<div class="card">
+  <label>People (name • weight • drinks • apps • dessert)</label>
+  <div id="people" class="people"></div>
+  <button onclick="addPerson()">+ Add person</button>
+</div>
+
+<button class="primary" onclick="split()">SPLIT IT</button>
+
+<div id="out" class="card" style="display:none"></div>
+
+<script>
+function addPerson(name=''){
+  const div=document.createElement('div');div.className='person';
+  div.innerHTML=`<input type="text" placeholder="Name" value="${name}">
+  <input type="number" min="0.5" step="0.1" value="1" title="weight">
+  <label class="pill"><input type="checkbox" checked>🍹</label>
+  <label class="pill"><input type="checkbox" checked>🥗</label>
+  <label class="pill"><input type="checkbox" checked>🍰</label>`;
+  document.getElementById('people').appendChild(div);
+}
+addPerson('You');addPerson('Friend');
+
+function split(){
+  const total=parseFloat(document.getElementById('total').value||0);
+  const tax=parseFloat(document.getElementById('tax').value||0)/100;
+  const tip=parseFloat(document.getElementById('tip').value||0)/100;
+  const grand=total*(1+tax)*(1+tip);
+  const rows=[...document.querySelectorAll('.person')].map(p=>{
+    const [name,w,dr,ap,de]=[p.children[0].value||'Person',parseFloat(p.children[1].value)||1,p.children[2].children[0].checked,p.children[3].children[0].checked,p.children[4].children[0].checked];
+    const extras=(dr?1:0)+(ap?1:0)+(de?1:0);
+    return {name,weight:w*(1+extras*0.15)};
+  });
+  const sumW=rows.reduce((a,b)=>a+b.weight,0);
+  let out=`<div class="result">Grand total: $${grand.toFixed(2)}</div><div class="muted">${rows.length} people</div><hr style="border-color:#2a2f3a">`;
+  let allocated=0;
+  rows.forEach((r,i)=>{
+    const share = i===rows.length-1 ? grand-allocated : Math.round(grand*r.weight/sumW*100)/100;
+    allocated+=share; out+=`<div>${r.name}: <b>$${share.toFixed(2)}</b></div>`;
+  });
+  const o=document.getElementById('out');o.innerHTML=out;o.style.display='block';
+}
+</script>
+</body>
+</html>
