@@ -1,283 +1,551 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- Playables SDK -->
-<script>// Playables SDK v1.0.0
-// Game lifecycle bridge: rAF-based game-ready detection + event communication
-(function() {
-  'use strict';
-
-  // Idempotency: skip if already initialized (e.g., server-side injection
-  // followed by client-side inject-javascript via the Bloks webview component).
-  if (window.playablesSDK) return;
-
-  var HANDLER_NAME = 'playablesGameEventHandler';
-  var ANDROID_BRIDGE_NAME = '_MetaPlayablesBridge';
-  var RAF_FRAME_THRESHOLD = 3;
-
-  var gameReadySent = false;
-  var firstInteractionSent = false;
-  var errorSent = false;
-  var frameCount = 0;
-  var originalRAF = window.requestAnimationFrame;
-
-  // --- Transport Layer ---
-
-  function hasIOSBridge() {
-    return !!(window.webkit &&
-              window.webkit.messageHandlers &&
-              window.webkit.messageHandlers[HANDLER_NAME]);
-  }
-
-  function hasAndroidBridge() {
-    return !!(window[ANDROID_BRIDGE_NAME] &&
-              typeof window[ANDROID_BRIDGE_NAME].postEvent === 'function');
-  }
-
-  function isInIframe() {
-    return !!(window.parent && window.parent !== window);
-  }
-
-  function sendEvent(eventName, payload) {
-    var message = {
-      type: eventName,
-      payload: payload || {},
-      timestamp: Date.now()
-    };
-
-    if (hasIOSBridge()) {
-      try {
-        window.webkit.messageHandlers[HANDLER_NAME].postMessage(message);
-      } catch (e) { /* ignore */ }
-      return;
-    }
-
-    if (hasAndroidBridge()) {
-    try {
-      var p = payload || {};
-      p.__secureToken = window.__fbAndroidBridgeAuthToken || '';
-      p.timestamp = message.timestamp;
-      window[ANDROID_BRIDGE_NAME].postEvent(
-        eventName,
-        JSON.stringify(p)
-      );
-    } catch (e) { /* ignore */ }
-    return;
-  }
-
-    if (isInIframe()) {
-      try {
-        window.parent.postMessage(message, '*');
-      } catch (e) { /* ignore */ }
-      return;
-    }
-  }
-
-  // --- rAF Game-Ready Detection ---
-
-  function onFrame() {
-    if (gameReadySent) return;
-
-    frameCount++;
-    if (frameCount >= RAF_FRAME_THRESHOLD) {
-      gameReadySent = true;
-      sendEvent('game_ready', {
-        frame_count: frameCount,
-        detected_at: Date.now()
-      });
-      return;
-    }
-
-    originalRAF.call(window, onFrame);
-  }
-
-  if (originalRAF) {
-    window.requestAnimationFrame = function(callback) {
-      if (!gameReadySent) {
-        return originalRAF.call(window, function(timestamp) {
-          frameCount++;
-          if (frameCount >= RAF_FRAME_THRESHOLD && !gameReadySent) {
-            gameReadySent = true;
-            sendEvent('game_ready', {
-              frame_count: frameCount,
-              detected_at: Date.now()
-            });
-          }
-          callback(timestamp);
-        });
-      }
-      return originalRAF.call(window, callback);
-    };
-  }
-
-  // --- First User Interaction Detection ---
-
-  function setupFirstInteractionDetection() {
-    var events = ['touchstart', 'mousedown', 'keydown'];
-
-    function onFirstInteraction() {
-      if (firstInteractionSent) return;
-      firstInteractionSent = true;
-      sendEvent('user_interaction_start', null);
-
-      for (var i = 0; i < events.length; i++) {
-        document.removeEventListener(events[i], onFirstInteraction, true);
-      }
-    }
-
-    for (var i = 0; i < events.length; i++) {
-      document.addEventListener(events[i], onFirstInteraction, true);
-    }
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', setupFirstInteractionDetection);
-  } else {
-    setupFirstInteractionDetection();
-  }
-
-  // --- Auto Error Capture ---
-
-  window.addEventListener('error', function(event) {
-    if (errorSent) return;
-    errorSent = true;
-    sendEvent('error', {
-      message: event.message || 'Unknown error',
-      source: event.filename || '',
-      lineno: event.lineno || 0,
-      colno: event.colno || 0,
-      auto_captured: true
-    });
-  });
-
-  window.addEventListener('unhandledrejection', function(event) {
-    if (errorSent) return;
-    errorSent = true;
-    var reason = event.reason;
-    sendEvent('error', {
-      message: (reason instanceof Error) ? reason.message : String(reason),
-      type: 'unhandled_promise_rejection',
-      auto_captured: true
-    });
-  });
-
-  // --- Public API ---
-
-  window.playablesSDK = {
-    complete: function(score) {
-      sendEvent('game_ended', {
-        score: score,
-        completed: true
-      });
-    },
-
-    error: function(message) {
-      if (errorSent) return;
-      errorSent = true;
-      sendEvent('error', {
-        message: message || 'Unknown error',
-        auto_captured: false
-      });
-    },
-
-    sendEvent: function(eventName, payload) {
-      if (!eventName || typeof eventName !== 'string') return;
-      sendEvent(eventName, payload);
-    }
-  };
-
-  // Kick off rAF detection in case no game code calls rAF immediately
-  if (originalRAF) {
-    originalRAF.call(window, onFrame);
-  }
-})();</script>
-<!-- PLAYABLE_TOUCH_PATCH_V1 --><script>
-(function() {
-  if (window.__playableTouchPatchInstalled) return;
-  window.__playableTouchPatchInstalled = true;
-  var origAdd = EventTarget.prototype.addEventListener;
-  var blockedTypes = { touchstart: 1, touchmove: 1, wheel: 1 };
-  EventTarget.prototype.addEventListener = function(type, listener, options) {
-    if (blockedTypes[type]) {
-      if (options === undefined || options === null) {
-        options = { passive: true };
-      } else if (typeof options === 'boolean') {
-        options = { capture: options, passive: true };
-      } else {
-        options = Object.assign({}, options, { passive: true });
-      }
-    }
-    return origAdd.call(this, type, listener, options);
-  };
-})();
-</script><script>window.Intl=window.Intl||{};Intl.t=function(s){return(Intl._locale&&Intl._locale[s])||s;};</script>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>One Bill — Fair Split</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d1117">
+<title>One Bill — Kingston Edition</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
-:root{--bg:#0f1115;--card:#171a21;--accent:#7dd3fc;--text:#e5e7eb;--muted:#9ca3af}
-*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,sans-serif;background:var(--bg);color:var(--text);padding:16px}
-h1{font-size:1.4rem;margin:0 0 12px}.card{background:var(--card);border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:0 4px 16px rgba(0,0,0,.3)}
-label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}input,select,button{width:100%;padding:10px;border-radius:10px;border:1px solid #2a2f3a;background:#0f1218;color:var(--text);font-size:1rem}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.people{display:flex;flex-direction:column;gap:8px}
-.person{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:6px;align-items:center}
-.person input[type=text]{grid-column:1}.pill{display:flex;align-items:center;gap:4px;font-size:.75rem;color:var(--muted)}
-button.primary{background:var(--accent);color:#001018;border:none;font-weight:700;margin-top:8px}
-.result{font-size:1.1rem;font-weight:600}.muted{color:var(--muted);font-size:.85rem}
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --card: #0d1117;
+    --border: #30363d;
+    --border-soft: #21262d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --green: #2ea043;
+    --green-2: #238636;
+    --green-bright: #7ee28a;
+    --green-glow: rgba(46,160,67,0.25);
+    --red: #f85149;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: radial-gradient(1200px 800px at 50% -200px, #132a1a 0%, var(--bg) 40%, var(--bg) 100%);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
+  }
+  .app {
+    max-width: 540px;
+    margin: 0 auto;
+    min-height: 100dvh;
+    position: relative;
+    padding-bottom: 190px;
+  }
+  header {
+    padding: 32px 20px 8px;
+    text-align: center;
+  }
+  .logo {
+    width: 44px; height: 44px;
+    margin: 0 auto 10px;
+    border-radius: 12px;
+    background: linear-gradient(145deg, #1f7a46, #2ea043);
+    box-shadow: 0 0 30px var(--green-glow), inset 0 1px 0 rgba(255,255,255,0.15);
+    display: grid; place-items: center;
+    font-size: 22px;
+  }
+  h1 {
+    margin: 0;
+    font-size: 40px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: linear-gradient(180deg, #ffffff 0%, #d1ffe0 55%, var(--green-bright) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    line-height: 1.05;
+  }
+  .subtitle {
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 500;
+  }
+  .explainer {
+    margin: 18px 20px 12px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 14px 16px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #c9d1d9;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.02) inset;
+  }
+  .kingston-note {
+    margin: 0 24px 14px;
+    display: flex; gap: 8px; align-items: center;
+    color: var(--green-bright);
+    font-size: 12.5px;
+    font-weight: 500;
+  }
+  .kingston-note svg { flex-shrink: 0; opacity: 0.9; }
+
+  .inputs {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 0 20px;
+  }
+  @media (min-width: 480px) {
+    .inputs { grid-template-columns: 1fr 1fr; }
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 12px;
+    transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+    animation: rise .4s ease both;
+  }
+  .card:nth-child(1){animation-delay:.02s} .card:nth-child(2){animation-delay:.04s}
+  .card:nth-child(3){animation-delay:.06s} .card:nth-child(4){animation-delay:.08s}
+  .card:nth-child(5){animation-delay:.10s} .card:nth-child(6){animation-delay:.12s}
+  .card:nth-child(7){animation-delay:.14s} .card:nth-child(8){animation-delay:.16s}
+  .card:nth-child(9){animation-delay:.18s} .card:nth-child(10){animation-delay:.20s}
+  @keyframes rise { from { opacity:0; transform: translateY(8px)} to {opacity:1; transform:none} }
+  .card:focus-within {
+    border-color: var(--green);
+    box-shadow: 0 0 0 3px var(--green-glow);
+    transform: translateY(-1px);
+  }
+  .card-top {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+  }
+  .icon {
+    width: 34px; height: 34px;
+    display: grid; place-items: center;
+    background: var(--card);
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    font-size: 17px;
+  }
+  .label-name { font-weight: 600; font-size: 14px; }
+  .label-hint { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .input-wrap {
+    position: relative;
+    display: flex; align-items: center;
+    background: var(--card);
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    height: 46px;
+    padding-left: 28px;
+    transition: border-color .15s;
+  }
+  .input-wrap:focus-within { border-color: #2d333b; }
+  .input-wrap span {
+    position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+    color: #7d8590; font-weight: 700; font-size: 16px;
+  }
+  .input-wrap input {
+    width: 100%; height: 100%;
+    background: transparent; border: 0; outline: 0;
+    color: var(--text); font-size: 18px; font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    padding-right: 12px;
+  }
+  input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
+
+  .chart-card {
+    margin: 18px 20px 0;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 16px;
+  }
+  .chart-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px;
+  }
+  .chart-head h3 { margin: 0; font-size: 15px; font-weight: 650; }
+  .chart-head .tiny { font-size: 12px; color: var(--muted); }
+  .chart-wrap { height: 220px; position: relative; }
+  .empty {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    color: #6e7681; font-size: 13px; text-align: center; padding: 0 20px;
+  }
+
+  .actions {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;
+    padding: 14px 20px 0;
+  }
+  .btn {
+    height: 44px; border-radius: 12px; border: 1px solid var(--border);
+    background: #21262d; color: var(--text);
+    font-weight: 600; font-size: 14px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    cursor: pointer; user-select: none;
+    transition: transform .12s ease, background .15s, border-color .15s, box-shadow .15s;
+  }
+  .btn:hover { transform: translateY(-1px); border-color: #3d444d; }
+  .btn:active { transform: translateY(0) scale(0.98); }
+  .btn.primary {
+    background: linear-gradient(180deg, var(--green), var(--green-2));
+    border-color: #2f9f4f; color: white;
+    box-shadow: 0 6px 18px rgba(46,160,67,0.25);
+  }
+  .btn.primary:hover { box-shadow: 0 8px 24px rgba(46,160,67,0.32); }
+  .btn.danger { background: transparent; }
+  .btn.danger:hover { border-color: #5a1f1b; color: #ff7b72; }
+
+  .results {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
+    background: linear-gradient(180deg, rgba(13,17,23,0) 0%, rgba(13,17,23,0.85) 18%, rgba(13,17,23,0.95) 100%);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-top: 1px solid var(--border);
+  }
+  .results-inner {
+    max-width: 540px; margin: 0 auto;
+    padding: 14px 20px calc(16px + env(safe-area-inset-bottom));
+  }
+  .total-row { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px; }
+  .total-label { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 700; }
+  .total-value {
+    font-size: 38px; font-weight: 800; letter-spacing: -0.02em; line-height: 1;
+    color: var(--green-bright); font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 24px rgba(126,226,138,0.18);
+    transition: transform .18s ease;
+  }
+  .total-value.bump { transform: scale(1.03); }
+  .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .metric {
+    background: var(--panel); border: 1px solid var(--border-soft);
+    border-radius: 12px; padding: 9px 11px;
+  }
+  .metric-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+  .metric-value { margin-top: 3px; font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; }
+
+  footer {
+    text-align: center; padding: 26px 20px 10px;
+    color: #6e7681; font-size: 12.5px;
+  }
+  footer a { color: #8b949e; text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  #toast {
+    position: fixed; left: 50%; bottom: calc(160px + env(safe-area-inset-bottom));
+    transform: translateX(-50%) translateY(20px);
+    background: #1f242c; border: 1px solid var(--border);
+    color: var(--text); padding: 10px 14px; border-radius: 10px;
+    font-size: 13px; font-weight: 600; opacity: 0; pointer-events: none;
+    transition: all .25s ease; z-index: 100; box-shadow: 0 8px 30px rgba(0,0,0,.4);
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
-<h1>One Bill</h1>
-<div class="card">
-  <label>Bill total</label>
-  <input id="total" type="number" step="0.01" placeholder="100.00">
-  <div class="row" style="margin-top:8px">
-    <div><label>Tax %</label><input id="tax" type="number" value="0"></div>
-    <div><label>Tip %</label><input id="tip" type="number" value="18"></div>
+<div class="app">
+  <header>
+    <div class="logo">🧾</div>
+    <h1>One Bill</h1>
+    <div class="subtitle">Rent + Hydro + Heat = Actually Know</div>
+  </header>
+
+  <div class="explainer">
+    Hydro, heat, rent are all separate bills in Ontario. This puts them together so you know your real monthly burn.
+  </div>
+  <div class="kingston-note">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2C8 7 4 9.5 4 14c0 4.4 3.6 8 8 8s8-3.6 8-8c0-4.5-4-7-8-12Z" stroke="#7ee28a" stroke-width="1.6" fill="none"/></svg>
+    Kingston avg: Hydro ~$85, Heat ~$70 winter, Internet $65
+  </div>
+
+  <main>
+    <div class="inputs" id="inputs"></div>
+
+    <div class="chart-card">
+      <div class="chart-head">
+        <h3>Where it goes</h3>
+        <span class="tiny">tap values to edit</span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="pie"></canvas>
+        <div class="empty" id="empty">Add amounts to see breakdown</div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn primary" id="saveBtn" aria-label="Save">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L20 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Save
+      </button>
+      <button class="btn" id="shareBtn" aria-label="Share">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Share
+      </button>
+      <button class="btn danger" id="resetBtn" aria-label="Reset">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M9 7V4h6v3m-9 4l1 9h8l1-9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Reset
+      </button>
+    </div>
+  </main>
+
+  <footer>Made in Kingston, ON — for Jesse</footer>
+
+  <div class="results">
+    <div class="results-inner">
+      <div class="total-row">
+        <div>
+          <div class="total-label">Monthly Total</div>
+          <div class="total-value" id="monthly">$0</div>
+        </div>
+      </div>
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-label">Yearly</div>
+          <div class="metric-value" id="yearly">$0</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Daily</div>
+          <div class="metric-value" id="daily">$0.00</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Per Hour</div>
+          <div class="metric-value" id="hourly">$0.00</div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
-<div class="card">
-  <label>People (name • weight • drinks • apps • dessert)</label>
-  <div id="people" class="people"></div>
-  <button onclick="addPerson()">+ Add person</button>
-</div>
-
-<button class="primary" onclick="split()">SPLIT IT</button>
-
-<div id="out" class="card" style="display:none"></div>
+<div id="toast"></div>
 
 <script>
-function addPerson(name=''){
-  const div=document.createElement('div');div.className='person';
-  div.innerHTML=`<input type="text" placeholder="Name" value="${name}">
-  <input type="number" min="0.5" step="0.1" value="1" title="weight">
-  <label class="pill"><input type="checkbox" checked>🍹</label>
-  <label class="pill"><input type="checkbox" checked>🥗</label>
-  <label class="pill"><input type="checkbox" checked>🍰</label>`;
-  document.getElementById('people').appendChild(div);
-}
-addPerson('You');addPerson('Friend');
+const ITEMS = [
+  { key: 'rent', name: 'Rent/Mortgage', icon: '🏠', placeholder: 1950, hint: 'Kingston 1-bed avg' },
+  { key: 'hydro', name: 'Hydro (Electricity)', icon: '⚡', placeholder: 85, hint: 'K-Hydro' },
+  { key: 'heat', name: 'Heating (Gas)', icon: '🔥', placeholder: 70, hint: 'Enbridge winter' },
+  { key: 'water', name: 'Water', icon: '💧', placeholder: 30, hint: 'Utilities Kingston' },
+  { key: 'internet', name: 'Internet', icon: '📶', placeholder: 65, hint: 'Cogeco/Bell' },
+  { key: 'phone', name: 'Phone', icon: '📱', placeholder: 55, hint: '' },
+  { key: 'insurance', name: 'Tenant Insurance', icon: '🛡️', placeholder: 25, hint: '' },
+  { key: 'groceries', name: 'Groceries', icon: '🛒', placeholder: 450, hint: '' },
+  { key: 'transit', name: 'Transit/Gas', icon: '🚌', placeholder: 120, hint: '' },
+  { key: 'other', name: 'Other', icon: '➕', placeholder: 0, hint: '' },
+];
 
-function split(){
-  const total=parseFloat(document.getElementById('total').value||0);
-  const tax=parseFloat(document.getElementById('tax').value||0)/100;
-  const tip=parseFloat(document.getElementById('tip').value||0)/100;
-  const grand=total*(1+tax)*(1+tip);
-  const rows=[...document.querySelectorAll('.person')].map(p=>{
-    const [name,w,dr,ap,de]=[p.children[0].value||'Person',parseFloat(p.children[1].value)||1,p.children[2].children[0].checked,p.children[3].children[0].checked,p.children[4].children[0].checked];
-    const extras=(dr?1:0)+(ap?1:0)+(de?1:0);
-    return {name,weight:w*(1+extras*0.15)};
+const COLORS = ['#2ea043','#3fb950','#56d364','#238636','#1f7a46','#2c974b','#66c77a','#7ee28a','#9aeaa4','#8b949e'];
+
+const inputsEl = document.getElementById('inputs');
+const monthlyEl = document.getElementById('monthly');
+const yearlyEl = document.getElementById('yearly');
+const dailyEl = document.getElementById('daily');
+const hourlyEl = document.getElementById('hourly');
+const emptyEl = document.getElementById('empty');
+const toastEl = document.getElementById('toast');
+
+let chart;
+let prevTotal = 0;
+
+function fmt0(n){ return new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',maximumFractionDigits:0}).format(n||0); }
+function fmt2(n){ return new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',minimumFractionDigits:2,maximumFractionDigits:2}).format(n||0); }
+
+function createInputs() {
+  inputsEl.innerHTML = '';
+  ITEMS.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="card-top">
+        <div class="icon">${item.icon}</div>
+        <div>
+          <div class="label-name">${item.name}</div>
+          <div class="label-hint">${item.hint || ''}</div>
+        </div>
+      </div>
+      <div class="input-wrap">
+        <span>$</span>
+        <input type="number" inputmode="decimal" step="0.01" pattern="[0-9]*" placeholder="${item.placeholder}" data-key="${item.key}" aria-label="${item.name}">
+      </div>
+    `;
+    inputsEl.appendChild(card);
   });
-  const sumW=rows.reduce((a,b)=>a+b.weight,0);
-  let out=`<div class="result">Grand total: $${grand.toFixed(2)}</div><div class="muted">${rows.length} people</div><hr style="border-color:#2a2f3a">`;
-  let allocated=0;
-  rows.forEach((r,i)=>{
-    const share = i===rows.length-1 ? grand-allocated : Math.round(grand*r.weight/sumW*100)/100;
-    allocated+=share; out+=`<div>${r.name}: <b>$${share.toFixed(2)}</b></div>`;
+  inputsEl.querySelectorAll('input').forEach(inp => {
+    inp.addEventListener('input', onChange);
+    inp.addEventListener('focus', e => e.target.select());
   });
-  const o=document.getElementById('out');o.innerHTML=out;o.style.display='block';
 }
+
+function getValues() {
+  const vals = {};
+  document.querySelectorAll('#inputs input').forEach(i => {
+    vals[i.dataset.key] = parseFloat(i.value) || 0;
+  });
+  return vals;
+}
+
+function setValues(vals) {
+  document.querySelectorAll('#inputs input').forEach(i => {
+    i.value = vals[i.dataset.key] ? String(vals[i.dataset.key]) : '';
+  });
+}
+
+function calculate() {
+  const vals = getValues();
+  let total = 0;
+  const breakdown = [];
+  ITEMS.forEach((it, idx) => {
+    const v = vals[it.key] || 0;
+    total += v;
+    if (v > 0) breakdown.push({ label: it.name, value: v, color: COLORS[idx] });
+  });
+
+  const yearly = total * 12;
+  const daily = yearly / 365;
+  const hourly = daily / 24;
+
+  // animate monthly
+  animateNumber(prevTotal, total, v => monthlyEl.textContent = fmt0(v));
+  prevTotal = total;
+  monthlyEl.classList.add('bump');
+  setTimeout(()=>monthlyEl.classList.remove('bump'),180);
+
+  yearlyEl.textContent = fmt0(yearly);
+  dailyEl.textContent = fmt2(daily);
+  hourlyEl.textContent = fmt2(hourly);
+
+  updateChart(breakdown, total);
+  emptyEl.style.display = total > 0 ? 'none' : 'grid';
+}
+
+function animateNumber(from, to, cb) {
+  const start = performance.now();
+  const dur = 280;
+  function tick(t){
+    const p = Math.min(1, (t - start)/dur);
+    const eased = 1 - Math.pow(1-p, 3);
+    cb(from + (to - from) * eased);
+    if(p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+function updateChart(data, total) {
+  if(!chart) return;
+  chart.data.labels = data.map(d => d.label);
+  chart.data.datasets[0].data = data.map(d => d.value);
+  chart.data.datasets[0].backgroundColor = data.map(d => d.color);
+  chart.update('none');
+}
+
+function initChart() {
+  const ctx = document.getElementById('pie');
+  chart = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderWidth: 0, hoverOffset: 6 }] },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '70%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#11161d',
+          titleColor: '#e6edf3',
+          bodyColor: '#c9d1d9',
+          borderColor: '#30363d',
+          borderWidth: 1,
+          padding: 10,
+          displayColors: true,
+          callbacks: {
+            label: (ctx) => ` ${ctx.label}: ${fmt0(ctx.parsed)}`
+          }
+        }
+      }
+    }
+  });
+}
+
+function onChange() {
+  calculate();
+}
+
+function saveAll() {
+  const vals = getValues();
+  localStorage.setItem('onebill-kingston-v2', JSON.stringify(vals));
+  showToast('Saved to this device ✓');
+}
+function loadAll() {
+  const raw = localStorage.getItem('onebill-kingston-v2');
+  if(raw){
+    try { setValues(JSON.parse(raw)); return true; } catch {}
+  }
+  // first run: prefill with Kingston typicals as placeholders (actual values)
+  const defaults = {};
+  ITEMS.forEach(i => defaults[i.key] = i.placeholder);
+  setValues(defaults);
+  return false;
+}
+function resetAll() {
+  if(!confirm('Clear all amounts?')) return;
+  document.querySelectorAll('#inputs input').forEach(i => i.value = '');
+  localStorage.removeItem('onebill-kingston-v2');
+  calculate();
+  showToast('Reset');
+}
+
+async function shareAll() {
+  const vals = getValues();
+  const total = Object.values(vals).reduce((a,b)=>a+b,0);
+  const yearly = total*12, daily = yearly/365, hourly = daily/24;
+  const lines = [
+    'One Bill — Kingston Edition',
+    `Monthly: ${fmt0(total)}`,
+    `Yearly: ${fmt0(yearly)}`,
+    `Daily: ${fmt2(daily)} (${fmt2(hourly)}/hr)`,
+    '',
+    'Breakdown:'
+  ];
+  ITEMS.forEach(it => {
+    const v = vals[it.key];
+    if(v>0) lines.push(`• ${it.name}: ${fmt0(v)}`);
+  });
+  lines.push('', 'Hydro, heat, rent — combined.');
+  const text = lines.join('\n');
+
+  if(navigator.share) {
+    try { await navigator.share({ title: 'One Bill Kingston', text }); return; } catch {}
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast('Summary copied');
+  } catch {
+    showToast('Copy failed');
+  }
+}
+
+let toastTimer;
+function showToast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>toastEl.classList.remove('show'), 1800);
+}
+
+document.getElementById('saveBtn').addEventListener('click', saveAll);
+document.getElementById('shareBtn').addEventListener('click', shareAll);
+document.getElementById('resetBtn').addEventListener('click', resetAll);
+
+// Init
+createInputs();
+initChart();
+loadAll();
+calculate();
+
+// Autosave debounce
+let saveDebounce;
+document.getElementById('inputs').addEventListener('input', () => {
+  clearTimeout(saveDebounce);
+  saveDebounce = setTimeout(saveAll, 800);
+});
 </script>
+<script>(function(){document.addEventListener("click",function(e){var a=e.target.closest("[data-product-id]");if(!a)return;e.preventDefault();var pid=a.getAttribute("data-product-id");if(pid)parent.postMessage({type:"ecto-artifact-link-click",productId:pid},"*")})})();</script>
 </body>
 </html>
